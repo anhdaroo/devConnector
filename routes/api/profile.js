@@ -110,6 +110,7 @@ router.post('/', [
 
         } catch (err) {
             console.error(err.message);
+
             res.status(500).send('Server Error');
         }
         // console.group(skills);
@@ -122,5 +123,131 @@ router.post('/', [
 // @route   GET api/profile
 // @desc    Get all profile
 // @acces   Public
+router.get('/', async (req, res) => {
+    try {
+        //Find by profile model, populate from user collection and an array of fields
+        const profiles = await Profile.find().populate('user', ['name', 'avatar'])
+        res.json(profiles);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+})
+
+// @route   GET api/profile/user/Luser_id
+// @desc    Get Profile by user ID
+// @acces   Public
+router.get('/user/:user_id', async (req, res) => {
+    try {
+        //Find by profile model, populate from user collection and an array of fields
+        const profile = await Profile.findOne({ user: req.params.user_id }).populate('user', ['name', 'avatar'])
+
+        if (!profile) {
+            return res.status(400).json({ msg: 'Profile not found' });
+        }
+
+        res.json(profile);
+    } catch (err) {
+        console.error(err.message);
+        //Not sure where err.kind is coming rfom
+        if (err.kind == 'ObjectId') {
+            return res.status(400).json({ msg: 'Profile not found' });
+        }
+        res.status(500).send('Server Error');
+    }
+})
+
+// @route   DELETE api/profile
+// @desc    Delete profile, user and posts
+// @acces   Private
+router.delete('/', auth, async (req, res) => {
+    try {
+
+        //Todo - remove users posts
+        //Remove Profile
+        await Profile.findOneAndRemove({ user: req.user.id })
+
+        //Remove User
+        await User.findOneAndRemove({ _id: req.user.id })
+
+
+        // if (!profile) {
+        //     return res.status(400).json({ msg: 'Profile not found' });
+        // }
+
+        res.json({ msg: 'User Removed' });
+
+    } catch (err) {
+        console.error(err.message);
+        //Not sure where err.kind is coming rfom
+        if (err.kind == 'ObjectId') {
+            return res.status(400).json({ msg: 'Profile not found' });
+        }
+        res.status(500).send('Server Error');
+    }
+})
+
+// @route   PUT api/profile
+// @desc    Add Profile Experience
+// @acces   Private
+router.put('/experience',
+    [
+        auth,
+        [
+            check('title', 'Title is required').notEmpty(),
+            check('company', 'Company is required').notEmpty(),
+            check('from', 'From date is required').notEmpty(),
+
+        ]
+    ],
+
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        //Destructuring
+        const {
+            title,
+            company,
+            location,
+            from,
+            to,
+            current,
+            description
+        } = req.body;
+
+        //first you have to destructure, then add it to a temporary var to add it onto the profile
+        const newExp = {
+            //This is the same 
+            title: title,
+            company,
+            location,
+            from,
+            to,
+            current,
+            description
+        }
+
+        try {
+            // We get req.user.id from the token
+            const profile = await Profile.findOne({ user: req.user.id });
+
+            profile.experience.unshift(newExp);
+
+            await profile.save();
+
+            res.json(profile);
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send('Server Error');
+        }
+    });
+
+
+// @route   PUT api/profile
+// @desc    Add Profile Experience
+// @acces   Private
 
 module.exports = router;
