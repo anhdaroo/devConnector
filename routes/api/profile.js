@@ -187,7 +187,7 @@ router.delete('/', auth, async (req, res) => {
     }
 })
 
-// @route   PUT api/profile
+// @route   PUT api/profile/experience
 // @desc    Add Profile Experience
 // @acces   Private
 router.put('/experience',
@@ -269,6 +269,86 @@ router.delete('/experience/:exp_id', auth, async (req, res) => {
 })
 
 
+// @route   PUT api/profile/education
+// @desc    Add Profile Education
+// @acces   Private
+router.put('/education',
+    [
+        auth,
+        [
+            check('school', 'School is required').notEmpty(),
+            check('degree', 'Degree is required').notEmpty(),
+            check('fieldofstudy', 'Field of study is required').notEmpty(),
+            check('from', 'From date is required and needs to be from the past')
 
+        ]
+    ],
+
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        //Destructuring
+        const {
+            title,
+            company,
+            location,
+            from,
+            to,
+            current,
+            description
+        } = req.body;
+
+        //first you have to destructure, then add it to a temporary var to add it onto the profile
+        const newExp = {
+            //This is the same 
+            title: title,
+            company,
+            location,
+            from,
+            to,
+            current,
+            description
+        }
+
+        try {
+            // We get req.user.id from the token
+            const profile = await Profile.findOne({ user: req.user.id });
+
+            profile.experience.unshift(newExp);
+
+            await profile.save();
+
+            res.json(profile);
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send('Server Error');
+        }
+    });
+
+
+// @route   DELETE api/profile/education/:exp_id
+// @desc    Delete Profile Education
+// @acces   Private
+
+router.delete('/education/:exp_id', auth, async (req, res) => {
+    try {
+        const profile = await Profile.findOne({ user: req.user.id });
+
+        //Get Remove Index
+        const removeIndex = profile.experience.map(x => x.id).indexOf(req.params.exp_id);
+
+        profile.experience.splice(removeIndex, 1);
+
+        await profile.save();
+
+        res.json(profile);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+})
 
 module.exports = router;
