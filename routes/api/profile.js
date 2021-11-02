@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const request = require('request');
+const config = require('config');
 const auth = require('../../middleware/auth');
 const { check, validationResult } = require('express-validator');
 // const { check, validationResult } = require('express-validator/check');
@@ -280,6 +282,8 @@ router.put('/education',
             check('degree', 'Degree is required').notEmpty(),
             check('fieldofstudy', 'Field of study is required').notEmpty(),
             check('from', 'From date is required and needs to be from the past')
+                .notEmpty()
+
 
         ]
     ],
@@ -292,9 +296,9 @@ router.put('/education',
 
         //Destructuring
         const {
-            title,
-            company,
-            location,
+            school,
+            degree,
+            fieldofstudy,
             from,
             to,
             current,
@@ -302,11 +306,11 @@ router.put('/education',
         } = req.body;
 
         //first you have to destructure, then add it to a temporary var to add it onto the profile
-        const newExp = {
+        const newEdu = {
             //This is the same 
-            title: title,
-            company,
-            location,
+            school,
+            degree,
+            fieldofstudy,
             from,
             to,
             current,
@@ -317,7 +321,7 @@ router.put('/education',
             // We get req.user.id from the token
             const profile = await Profile.findOne({ user: req.user.id });
 
-            profile.experience.unshift(newExp);
+            profile.education.unshift(newEdu);
 
             await profile.save();
 
@@ -329,18 +333,18 @@ router.put('/education',
     });
 
 
-// @route   DELETE api/profile/education/:exp_id
+// @route   DELETE api/profile/education/:edu_id
 // @desc    Delete Profile Education
 // @acces   Private
 
-router.delete('/education/:exp_id', auth, async (req, res) => {
+router.delete('/education/:edu_id', auth, async (req, res) => {
     try {
         const profile = await Profile.findOne({ user: req.user.id });
 
         //Get Remove Index
-        const removeIndex = profile.experience.map(x => x.id).indexOf(req.params.exp_id);
+        const removeIndex = profile.education.map(x => x.id).indexOf(req.params.edu_id);
 
-        profile.experience.splice(removeIndex, 1);
+        profile.education.splice(removeIndex, 1);
 
         await profile.save();
 
@@ -351,4 +355,33 @@ router.delete('/education/:exp_id', auth, async (req, res) => {
     }
 })
 
+// @route   GET api/profile/github/:username
+// @desc    Get user repos from Github
+// @acces   Public
+
+router.get('/github/:username', (req, res) => {
+    try {
+        const options = {
+            //Needs request and config package from package.json
+            uri: `https://api.github.com/users/${req.params.username}/repos?per_page=5&sort=created:asc&client_id=${config.get('githubClientId')}&client_secret=${config.get('githubSecret')}`,
+            method: 'GET',
+            headers: { 'user-agent': 'node.js' }
+        }
+
+        request(options, (error, response, body) => {
+            if (error) console.error(error);
+
+            if (response.statusCode !== 200) {
+                return res.status(404).json({ msg: 'No Github profile found' });
+
+            }
+
+            //Sends body that contains the error
+            res.json(JSON.parse(body));
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+})
 module.exports = router;
