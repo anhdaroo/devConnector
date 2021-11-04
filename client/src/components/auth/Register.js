@@ -1,9 +1,15 @@
 import React, { Fragment, useState } from 'react'
+
+//whenever you use connect you have to export it and the name of the component goes in it
+import { connect } from 'react-redux';
 import { Link } from 'react-router-dom'
 // redux action to make request ot backend, testing
 // import axios from 'axios';
+import { setAlert } from '../../actions/alert';
+import PropTypes from 'prop-types'
 
-export const Register = () => {
+
+const Register = ({ props }) => {
 
 
     //formData, setFormData this will be your state 
@@ -26,7 +32,9 @@ export const Register = () => {
     const onSubmit = async e => {
         e.preventDefault();
         if (password !== password2) {
-            console.log('Passwords do not match');
+            //in App.css .alert-danger can be dynamic 
+            // console.log('Passwords do not match', 'danger');
+            setAlert('Passwords do not match', 'danger');
         } else {
             console.log('SUCCESS');
             // console.log(formData);
@@ -88,10 +96,7 @@ export const Register = () => {
                             onChange={e => onChange(e)}
                             required
                         />
-                        <small className="form-text"
-                        >This site uses Gravatar so if you want a profile image, use a
-                            Gravatar email</small
-                        >
+
                     </div>
                     <div className="form-group">
                         <input
@@ -123,4 +128,10 @@ export const Register = () => {
     )
 }
 
-export default Register;
+Register.propTypes = {
+    setAlert: PropTypes.func.isRequired,
+    /* import PropTypes from 'prop-types' */
+};
+
+{/* This will allow us to access props.alert add props to Register up top*/ }
+export default connect(null, { setAlert })(Register);
